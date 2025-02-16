@@ -1,6 +1,6 @@
 #include "LotSizeManagerInterface.mqh"
 
-class FixedLotSizeManager : public LotSizeManagerInterface {
+class FixedLotSizeManager : public LotSizeManager {
 private:
   double lot;
 

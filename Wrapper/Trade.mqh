@@ -1,34 +1,49 @@
+#include "../Manager/ExitLevel/ExitLevelManagerInterface.mqh"
+#include "../Manager/LotSize/LotSizeManagerInterface.mqh"
 #include <Object.mqh>
 #include <Trade/Trade.mqh>
-#include <Wrapper/Manager/lotSizeManager.mqh>
 
 class WrappedTrade : public CObject {
 private:
-    LotSizeManagerInterface *lotSizeManager;
+  LotSizeManager *lotSizeManager;
+  ExitLevelManager *exitLevelManager;
   CTrade trade;
   string symbol;
   ulong magicNumber;
 
 public:
-  WrappedTrade(string _symbol, ulong _magicNumber, LotSizeManagerInterface *_lotSizeManager) {
+  WrappedTrade(string _symbol, ulong _magicNumber,
+               LotSizeManager *_lotSizeManager,
+               ExitLevelManager *_exitLevelManager) {
     symbol = _symbol;
     magicNumber = _magicNumber;
     trade = CTrade();
     trade.SetExpertMagicNumber(magicNumber);
     lotSizeManager = _lotSizeManager;
+    exitLevelManager = _exitLevelManager;
   }
 
-  bool activeLong() { return activeLong(lotSizeManager.get(), 0, 0); }
+  bool activeLong() {
+    return activeLong(lotSizeManager.get(), exitLevelManager.getSl(),
+                      exitLevelManager.getTp());
+  }
 
-  bool activeLong(const double lot) { return activeLong(lot, 0, 0); }
+  bool activeLong(const double lot) {
+    return activeLong(lot, exitLevelManager.getSl(), exitLevelManager.getTp());
+  }
 
   bool activeLong(const double lot, const double sl, const double tp) {
     return trade.Buy(lot, symbol, 0, sl, tp, "Long");
   }
 
-  bool activeShort() { return activeShort(lotSizeManager.get(), 0, 0); }
+  bool activeShort() {
+    return activeShort(lotSizeManager.get(), exitLevelManager.getSl(),
+                       exitLevelManager.getTp());
+  }
 
-  bool activeShort(const double lot) { return activeShort(lot, 0, 0); }
+  bool activeShort(const double lot) {
+    return activeShort(lot, exitLevelManager.getSl(), exitLevelManager.getTp());
+  }
 
   bool activeShort(const double lot, const double sl, const double tp) {
     return trade.Sell(lot, symbol, 0, sl, tp, "Short");
@@ -93,9 +108,9 @@ public:
         if (PositionGetInteger(POSITION_MAGIC) == magicNumber &&
             PositionGetInteger(POSITION_TYPE) == type &&
             PositionGetString(POSITION_SYMBOL) == symbol) {
-            ulong ticket = PositionGetInteger(POSITION_TICKET);
-            trade.PositionClose(ticket);
-          }
+          ulong ticket = PositionGetInteger(POSITION_TICKET);
+          trade.PositionClose(ticket);
+        }
       }
     }
   }
