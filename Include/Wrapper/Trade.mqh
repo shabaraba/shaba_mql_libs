@@ -23,13 +23,23 @@ public:
     exitLevelManager = _exitLevelManager;
   }
 
+    bool setLong(double bid) {
+        return trade.Buy(lotSizeManager.get(), symbol, bid, exitLevelManager.getSl(bid, POSITION_TYPE_BUY), exitLevelManager.getTp(bid, POSITION_TYPE_BUY));
+    }
+
+    bool setShort(double ask) {
+        return trade.Sell(lotSizeManager.get(), symbol, ask, exitLevelManager.getSl(ask, POSITION_TYPE_BUY), exitLevelManager.getTp(ask, POSITION_TYPE_BUY));
+    }
+
   bool activeLong() {
-    return activeLong(lotSizeManager.get(), exitLevelManager.getSl(),
-                      exitLevelManager.getTp());
+    double bid = SymbolInfoDouble(Symbol(), SYMBOL_BID);
+    return activeLong(lotSizeManager.get(), exitLevelManager.getSl(bid, POSITION_TYPE_BUY),
+                      exitLevelManager.getTp(bid, POSITION_TYPE_BUY));
   }
 
   bool activeLong(const double lot) {
-    return activeLong(lot, exitLevelManager.getSl(), exitLevelManager.getTp());
+    double bid = SymbolInfoDouble(Symbol(), SYMBOL_BID);
+    return activeLong(lot, exitLevelManager.getSl(bid, POSITION_TYPE_BUY), exitLevelManager.getTp(bid, POSITION_TYPE_BUY));
   }
 
   bool activeLong(const double lot, const double sl, const double tp) {
@@ -37,12 +47,14 @@ public:
   }
 
   bool activeShort() {
-    return activeShort(lotSizeManager.get(), exitLevelManager.getSl(),
-                       exitLevelManager.getTp());
+    double ask = SymbolInfoDouble(Symbol(), SYMBOL_ASK);
+    return activeShort(lotSizeManager.get(), exitLevelManager.getSl(ask, POSITION_TYPE_SELL),
+                       exitLevelManager.getTp(ask, POSITION_TYPE_SELL));
   }
 
   bool activeShort(const double lot) {
-    return activeShort(lot, exitLevelManager.getSl(), exitLevelManager.getTp());
+    double ask = SymbolInfoDouble(Symbol(), SYMBOL_ASK);
+    return activeShort(lot, exitLevelManager.getSl(ask, POSITION_TYPE_SELL), exitLevelManager.getTp(ask, POSITION_TYPE_SELL));
   }
 
   bool activeShort(const double lot, const double sl, const double tp) {

@@ -10,12 +10,12 @@ enum EXIT_LEVEL_TYPE {
 class ExitLevelManagerFactory {
 public:
   static ExitLevelManager *create(EXIT_LEVEL_TYPE type,
-                                        const double initTp, const double initSl) {
+                                        const double _initTp, const double _initSl) {
     switch (type) {
     case EXIT_LEVEL_TYPE_NONE:
       return new NoneExitLevelManager();
     case EXIT_LEVEL_TYPE_FIXED:
-      return new FixedExitLevelManager(initTp, initSl);
+      return new FixedExitLevelManager(_initTp, _initSl);
     }
   return new NoneExitLevelManager();
   }

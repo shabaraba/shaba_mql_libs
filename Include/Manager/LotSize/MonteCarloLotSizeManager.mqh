@@ -8,7 +8,9 @@ private:
 
   void resetSequence() {
     int tmp[2] = {0, 1};
+    ArrayResize(sequence, 2);
     ArrayCopy(sequence, tmp);
+    current = 1;
   }
 
 public:
@@ -33,8 +35,10 @@ public:
   void loseThen() override {
     ArrayResize(sequence, ArraySize(sequence) + 1);
     sequence[ArraySize(sequence) - 1] = current;
-
     current = sequence[0] + sequence[ArraySize(sequence) - 1];
+    if (current > 50) {
+      resetSequence();
+    }
   };
   double get() override {
     ArrayPrint(sequence);
