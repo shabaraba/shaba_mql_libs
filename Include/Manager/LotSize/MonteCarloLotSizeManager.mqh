@@ -41,7 +41,7 @@ public:
     }
   };
   double get() override {
-    ArrayPrint(sequence);
+    // ArrayPrint(sequence);
     return current * initLot;
   };
 }

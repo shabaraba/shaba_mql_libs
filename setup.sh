@@ -33,4 +33,15 @@ find "$PWD"/Scripts -mindepth 1 -maxdepth 1 -type d | while IFS= read -r dir; do
     echo "🚚 Created symlink: $dir -> $BASE_DIR/Scripts/$dir_name"
 done
 
+find "$PWD"/Indicators -mindepth 1 -maxdepth 1 -type d | while IFS= read -r dir; do
+    dir_name=$(basename "$dir")
+    escaped_src=$(echo "$dir" | sed 's/ /\\ /g')
+    escaped_dest=$(echo "$BASE_DIR/Indicators/$dir_name" | sed 's/ /\\ /g')
+    echo $escaped_dest
+    echo $escaped_src
+    
+    eval "ln -snvf $escaped_src $escaped_dest"
+    echo "🚚 Created symlink: $dir -> $BASE_DIR/Indicators/$dir_name"
+done
+
 echo "🎉 deploy finished."
