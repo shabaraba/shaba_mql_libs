@@ -1,5 +1,4 @@
 typedef void (*PROCESS_FUNC)(void);
-enum ENUM_WIN_LOSE { TRADE_RESULT_WIN, TRADE_RESULT_LOSE, TRADE_RESULT_ELSE };
 
 class WrappedSystem {
 public:
@@ -8,9 +7,6 @@ public:
                        PROCESS_FUNC func);
   static void exitByBlowout(double lot);
   static int getJstHour();
-  static ENUM_WIN_LOSE getTradeResult(const MqlTradeTransaction &trans,
-                                      const MqlTradeRequest &request,
-                                      const MqlTradeResult &result);
   static void getEconomicNewsTime(const string countryCode, datetime &result[]);
 };
 
@@ -31,48 +27,6 @@ void WrappedSystem::OnCandle(string symbol, ENUM_TIMEFRAMES period,
   func();
 };
 
-ENUM_WIN_LOSE WrappedSystem::getTradeResult(const MqlTradeTransaction &trans,
-                                            const MqlTradeRequest &request,
-                                            const MqlTradeResult &result) {
-  //--- 取引リクエストの実行結果
-  ulong lastOrderID = trans.order;
-  ENUM_ORDER_TYPE lastOrderType = trans.order_type;
-  ENUM_ORDER_STATE lastOrderState = trans.order_state;
-  //--- トランザクションが実行される取引シンボルの名称
-  string trans_symbol = trans.symbol;
-  //--- トランザクションの種類
-  ENUM_TRADE_TRANSACTION_TYPE trans_type = trans.type;
-  if (trans_type != TRADE_TRANSACTION_DEAL_ADD) {
-    return TRADE_RESULT_ELSE;
-  }
-
-  ulong deal_ticket = trans.deal;
-  double deal_profit = HistoryDealGetDouble(deal_ticket, DEAL_PROFIT);
-  ulong deal_reason = HistoryDealGetInteger(deal_ticket, DEAL_REASON);
-
-  // ストップロスで決済された場合
-  if (deal_profit < 0 && deal_reason == DEAL_REASON_SL) {
-    return TRADE_RESULT_LOSE;
-  }
-  if (deal_profit > 0 && deal_reason == DEAL_REASON_TP) {
-    return TRADE_RESULT_WIN;
-  }
-  // 取引が成功したか確認
-  if (HistoryDealSelect(deal_ticket)) {
-    ulong order_ticket = HistoryDealGetInteger(
-        deal_ticket, DEAL_ORDER); // 対応するオーダーのチケット
-    ulong position_id =
-        HistoryDealGetInteger(deal_ticket, DEAL_POSITION_ID); // ポジションID
-    double profit = HistoryDealGetDouble(deal_ticket, DEAL_PROFIT); // 損益
-    if (profit > 0) {
-      return TRADE_RESULT_WIN;
-    }
-    if (profit < 0) {
-      return TRADE_RESULT_LOSE;
-    }
-  };
-  return TRADE_RESULT_ELSE;
-};
 int WrappedSystem::getJstHour() {
   datetime currentDatetime = TimeCurrent(); // 現在のサーバー時間 (UTC)
   MqlDateTime tm;
@@ -108,6 +62,19 @@ void WrappedSystem::exitByBlowout(double lot) {
 
 void WrappedSystem::getEconomicNewsTime(const string countryCode,
                                         datetime &result[]) {
+  if (MQLInfoInteger(MQL_TESTER)) {
+    MqlDateTime t;
+    TimeToStruct(TimeCurrent(), t);
+    t.hour = 22;
+    t.min = 30;
+    t.sec = 0;
+    datetime forTest[] = {StructToTime(t)};
+
+    ArrayCopy(result, forTest);
+    Print("For Tester");
+    return;
+  }
+
   MqlCalendarValue values[];
   datetime tmp[];
   datetime from = TimeCurrent();

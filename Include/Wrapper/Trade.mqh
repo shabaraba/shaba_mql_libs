@@ -3,16 +3,18 @@
 #include <Object.mqh>
 #include <Trade/Trade.mqh>
 
+enum ENUM_WIN_LOSE { TRADE_RESULT_WIN, TRADE_RESULT_LOSE, TRADE_RESULT_ELSE };
+
 class WrappedTrade : public CObject {
 private:
-  LotSizeManager *lotSizeManager;
-  ExitLevelManager *exitLevelManager;
   CTrade trade;
   string symbol;
   ulong magicNumber;
   int digits;
 
 public:
+  LotSizeManager *lotSizeManager;
+  ExitLevelManager *exitLevelManager;
   WrappedTrade(string _symbol, ulong _magicNumber,
                LotSizeManager *_lotSizeManager,
                ExitLevelManager *_exitLevelManager) {
@@ -361,7 +363,7 @@ public:
         // 指値注文または逆指値注文かつ Magic Number が一致
         if (magic == magicNumber) {
           double price = OrderGetDouble(ORDER_PRICE_OPEN);
-          OrderModify(ticket, lotSizeManager.get(), price,
+          orderModify(ticket, lotSizeManager.get(), price,
                       exitLevelManager.getSl(price, positionType),
                       exitLevelManager.getTp(price, positionType),
                       ORDER_TIME_GTC, 0, OrderGetDouble(ORDER_PRICE_OPEN));
@@ -370,7 +372,41 @@ public:
     }
   }
 
-  bool OrderModify(const ulong ticket, const double volume, const double price,
+  void getAllPositionTickets(ulong &result[]) {
+    int totalPositions = PositionsTotal();
+
+    ulong tmp[] = {};
+    for (int i = 0; i < totalPositions; i++) {
+      ulong ticket = PositionGetTicket(i);
+      if (PositionSelectByTicket(ticket)) {
+        ulong magic = PositionGetInteger(POSITION_MAGIC);
+        if (magic == magicNumber) {
+          ArrayResize(tmp, ArraySize(tmp) + 1);
+          tmp[ArraySize(tmp) - 1] = ticket;
+        }
+      }
+    }
+    ArrayCopy(result, tmp);
+  }
+
+  void getAllOrderTickets(ulong &result[]) {
+    int totalOrders = OrdersTotal();
+
+    ulong tmp[] = {};
+    for (int i = 0; i < totalOrders; i++) {
+      ulong ticket = OrderGetTicket(i);
+      if (OrderSelect(ticket)) {
+        ulong magic = OrderGetInteger(ORDER_MAGIC);
+        if (magic == magicNumber) {
+          ArrayResize(tmp, ArraySize(tmp) + 1);
+          tmp[ArraySize(tmp) - 1] = ticket;
+        }
+      }
+    }
+    ArrayCopy(result, tmp);
+  }
+
+  bool orderModify(const ulong ticket, const double volume, const double price,
                    const double sl, const double tp,
                    const ENUM_ORDER_TYPE_TIME type_time,
                    const datetime expiration, const double stoplimit) {
@@ -394,4 +430,52 @@ public:
     //--- action and return the result
     return (trade.OrderSend(m_request, m_result));
   }
+
+  ENUM_WIN_LOSE getTradeResult(const MqlTradeTransaction &trans,
+                               const MqlTradeRequest &request,
+                               const MqlTradeResult &result) {
+    //--- 取引リクエストの実行結果
+    ulong lastOrderID = trans.order;
+    ENUM_ORDER_TYPE lastOrderType = trans.order_type;
+    ENUM_ORDER_STATE lastOrderState = trans.order_state;
+    //--- トランザクションが実行される取引シンボルの名称
+    string trans_symbol = trans.symbol;
+    //--- トランザクションの種類
+    ENUM_TRADE_TRANSACTION_TYPE trans_type = trans.type;
+    if (trans_type != TRADE_TRANSACTION_DEAL_ADD) {
+      return TRADE_RESULT_ELSE;
+    }
+
+    ulong deal_ticket = trans.deal;
+    if (HistoryDealSelect(deal_ticket)) {
+      ulong dealMagic = HistoryDealGetInteger(deal_ticket, DEAL_MAGIC);
+      if (dealMagic != magicNumber) {
+        return TRADE_RESULT_ELSE;
+      }
+      double deal_profit = HistoryDealGetDouble(deal_ticket, DEAL_PROFIT);
+      ulong deal_reason = HistoryDealGetInteger(deal_ticket, DEAL_REASON);
+
+      // ストップロスで決済された場合
+      if (deal_profit < 0 && deal_reason == DEAL_REASON_SL) {
+        return TRADE_RESULT_LOSE;
+      }
+      if (deal_profit > 0 && deal_reason == DEAL_REASON_TP) {
+        return TRADE_RESULT_WIN;
+      }
+
+      // 取引が成功したか確認
+      ulong order_ticket = HistoryDealGetInteger(
+          deal_ticket, DEAL_ORDER); // 対応するオーダーのチケット
+      ulong position_id =
+          HistoryDealGetInteger(deal_ticket, DEAL_POSITION_ID); // ポジションID
+      double profit = HistoryDealGetDouble(deal_ticket, DEAL_PROFIT); // 損益
+      if (profit > 0) {
+        return TRADE_RESULT_WIN;
+      }
+      if (profit < 0) {
+        return TRADE_RESULT_LOSE;
+      }
+    };
+    return TRADE_RESULT_ELSE;
+  };
 };
