@@ -5,7 +5,7 @@ void OnStart() {
   {
     // 書き出すCSVファイルのパス
     string file_name = "EconomicData.csv";
-    int file_handle = FileOpen(file_name, FILE_WRITE | FILE_CSV | FILE_COMMON);
+    int file_handle = FileOpen(file_name, FILE_WRITE | FILE_CSV);
     // int file_handle = FileOpen(file_name, FILE_WRITE | FILE_CSV | FILE_COMMON);
 
     if (file_handle == INVALID_HANDLE) {

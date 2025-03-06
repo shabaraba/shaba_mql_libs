@@ -11,7 +11,7 @@ private:
     return (target[0] <= line[0] && target[1] > line[1]);
   }
   bool isCrossUnder(double &target[], double &line[]) {
-    return (target[0] >= line[0] && target[1] < line[0]);
+    return (target[0] >= line[0] && target[1] < line[1]);
   }
 
 public:

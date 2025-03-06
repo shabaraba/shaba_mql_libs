@@ -431,6 +431,16 @@ public:
     return (trade.OrderSend(m_request, m_result));
   }
 
+  void updateExitLevel(const ulong ticket) {}
+
+  void updateAllExitLevel() {
+    ulong tickets[];
+    getAllOrderTickets(tickets);
+    for (int i = 0; i < ArraySize(tickets); i++) {
+      updateExitLevel(tickets[i]);
+    }
+  }
+
   ENUM_WIN_LOSE getTradeResult(const MqlTradeTransaction &trans,
                                const MqlTradeRequest &request,
                                const MqlTradeResult &result) {

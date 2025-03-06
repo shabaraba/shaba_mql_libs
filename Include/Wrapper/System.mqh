@@ -1,3 +1,9 @@
+#include <Files/File.mqh>
+#include <Files/FileTxt.mqh>
+
+CFile cfile;
+CFileTxt ctext;
+
 typedef void (*PROCESS_FUNC)(void);
 
 class WrappedSystem {
@@ -63,14 +69,34 @@ void WrappedSystem::exitByBlowout(double lot) {
 void WrappedSystem::getEconomicNewsTime(const string countryCode,
                                         datetime &result[]) {
   if (MQLInfoInteger(MQL_TESTER)) {
-    MqlDateTime t;
-    TimeToStruct(TimeCurrent(), t);
-    t.hour = 22;
-    t.min = 30;
-    t.sec = 0;
-    datetime forTest[] = {StructToTime(t)};
+    cfile.SetCommon(true);
+    //--- ファイル名の設定
+    string fileName = "EconomicData.csv";
 
-    ArrayCopy(result, forTest);
+    //--- ファイルを開く（読み取り専用、CSV形式、ANSIエンコーディング）
+    int file_handle = cfile.Open(fileName, FILE_READ | FILE_CSV | FILE_ANSI);
+    if (file_handle == INVALID_HANDLE) {
+      PrintFormat("fail open failed: %d", GetLastError());
+      return;
+    }
+
+    //--- ファイルの終端まで読み込む
+    while (!FileIsEnding(file_handle)) {
+      //--- 1行読み込み
+      datetime date_time = FileReadDatetime(file_handle);
+      string country = FileReadString(file_handle);
+      string currency = FileReadString(file_handle);
+      string event = FileReadString(file_handle);
+      string importance = FileReadString(file_handle);
+
+      //--- 読み込んだデータの処理（例としてログに出力）
+      Print(date_time, ", ", country, ", ", currency, ", ", event, ", ",
+            importance);
+    }
+
+    //--- ファイルを閉じる
+    cfile.Close();
+
     Print("For Tester");
     return;
   }
