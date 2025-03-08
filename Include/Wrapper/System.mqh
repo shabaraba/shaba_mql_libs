@@ -80,39 +80,54 @@ void WrappedSystem::exitByBlowout(double lot) {
 void WrappedSystem::getEconomicNewsTimeForTester(const string countryCode,
                                                  datetime from, datetime to,
                                                  EconomicEvent &result[]) {
+  static EconomicEvent allEvent[];
   Print("For Tester");
-  cfile.SetCommon(true);
-  //--- ファイル名の設定
-  string fileName = "EconomicData.csv";
+  if (ArraySize(allEvent) == 0) {
+    Print("Fetch Economic Event from csv");
+    cfile.SetCommon(true);
+    //--- ファイル名の設定
+    string fileName = "EconomicData.csv";
 
-  //--- ファイルを開く（読み取り専用、CSV形式、ANSIエンコーディング）
-  int file_handle = cfile.Open(fileName, FILE_READ | FILE_CSV | FILE_ANSI);
-  if (file_handle == INVALID_HANDLE) {
-    PrintFormat("fail open failed: %d", GetLastError());
-    return;
-  }
-
-  datetime current = TimeTradeServer();
-  //--- ファイルの終端まで読み込む
-  while (!FileIsEnding(file_handle)) {
-    //--- 1行読み込み
-    datetime date_time = FileReadDatetime(file_handle);
-    string country = FileReadString(file_handle);
-    string currency = FileReadString(file_handle);
-    string eventName = FileReadString(file_handle);
-    string importance = FileReadString(file_handle);
-    if (importance == "CALENDAR_IMPORTANCE_HIGH" && country == countryCode &&
-        date_time > from && date_time <= to) {
-      EconomicEvent event;
-      event.dateTime = date_time;
-      event.name = eventName;
-      ArrayResize(result, ArraySize(result) + 1);
-      result[ArraySize(result) - 1] = event;
+    //--- ファイルを開く（読み取り専用、CSV形式、ANSIエンコーディング）
+    int file_handle = cfile.Open(fileName, FILE_READ | FILE_CSV | FILE_ANSI);
+    if (file_handle == INVALID_HANDLE) {
+      PrintFormat("fail open failed: %d", GetLastError());
+      return;
     }
-    if (date_time - current > 24 * 3600)
-      break;
+
+    datetime current = TimeTradeServer();
+    //--- ファイルの終端まで読み込む
+    while (!FileIsEnding(file_handle)) {
+      //--- 1行読み込み
+      datetime date_time = FileReadDatetime(file_handle);
+      string country = FileReadString(file_handle);
+      string currency = FileReadString(file_handle);
+      string eventName = FileReadString(file_handle);
+      string importance = FileReadString(file_handle);
+      if (importance == "CALENDAR_IMPORTANCE_HIGH" && country == countryCode) {
+        EconomicEvent event;
+        event.dateTime = date_time;
+        event.name = eventName;
+        ArrayResize(allEvent, ArraySize(allEvent) + 1);
+        allEvent[ArraySize(allEvent) - 1] = event;
+      }
+    }
+    cfile.Close();
   }
-  cfile.Close();
+
+  ArrayResize(result, 0);
+  int removeStartIndex = 0;
+  int removeEndIndex = 0;
+  for (int i = 0; i < ArraySize(allEvent); i++) {
+    if (from <= allEvent[i].dateTime && allEvent[i].dateTime <= to) {
+      removeStartIndex = removeStartIndex == 0 ? i : removeStartIndex;
+      removeEndIndex = i;
+      ArrayResize(result, ArraySize(result) + 1);
+      result[ArraySize(result) - 1] = allEvent[i];
+    }
+    if (allEvent[i].dateTime > to) break;
+  }
+  ArrayRemove(allEvent, removeStartIndex, (removeEndIndex - removeStartIndex + 1));
   return;
 };
 
