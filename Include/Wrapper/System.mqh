@@ -116,18 +116,17 @@ void WrappedSystem::getEconomicNewsTimeForTester(const string countryCode,
   }
 
   ArrayResize(result, 0);
-  int removeStartIndex = 0;
-  int removeEndIndex = 0;
-  for (int i = 0; i < ArraySize(allEvent); i++) {
-    if (from <= allEvent[i].dateTime && allEvent[i].dateTime <= to) {
-      removeStartIndex = removeStartIndex == 0 ? i : removeStartIndex;
-      removeEndIndex = i;
+  static int startIndex = 0;
+  for (int i = startIndex; i < ArraySize(allEvent); i++) {
+    if (from <= allEvent[i].dateTime && allEvent[i].dateTime < to) {
       ArrayResize(result, ArraySize(result) + 1);
       result[ArraySize(result) - 1] = allEvent[i];
     }
-    if (allEvent[i].dateTime > to) break;
+    if (allEvent[i].dateTime >= to) {
+      startIndex = i -1;
+      break;
+    }
   }
-  ArrayRemove(allEvent, removeStartIndex, (removeEndIndex - removeStartIndex + 1));
   return;
 };
 
