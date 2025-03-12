@@ -9,6 +9,7 @@ typedef void (*PROCESS_FUNC)(void);
 struct EconomicEvent {
   datetime dateTime;
   string name;
+  ENUM_CALENDAR_EVENT_IMPORTANCE importance;
 };
 
 class WrappedSystem {
@@ -104,10 +105,19 @@ void WrappedSystem::getEconomicNewsTimeForTester(const string countryCode,
       string currency = FileReadString(file_handle);
       string eventName = FileReadString(file_handle);
       string importance = FileReadString(file_handle);
-      if (importance == "CALENDAR_IMPORTANCE_HIGH" && country == countryCode) {
+      if (country == countryCode) {
         EconomicEvent event;
         event.dateTime = date_time;
         event.name = eventName;
+        if (importance == "CALENDAR_IMPORTANCE_LOW") {
+          event.importance = CALENDAR_IMPORTANCE_LOW;
+        } else if (importance == "CALENDAR_IMPORTANCE_MODERATE") {
+          event.importance = CALENDAR_IMPORTANCE_MODERATE;
+        } else if (importance == "CALENDAR_IMPORTANCE_HIGH") {
+          event.importance = CALENDAR_IMPORTANCE_HIGH;
+        } else {
+          event.importance = CALENDAR_IMPORTANCE_NONE;
+        }
         ArrayResize(allEvent, ArraySize(allEvent) + 1);
         allEvent[ArraySize(allEvent) - 1] = event;
       }
@@ -123,7 +133,7 @@ void WrappedSystem::getEconomicNewsTimeForTester(const string countryCode,
       result[ArraySize(result) - 1] = allEvent[i];
     }
     if (allEvent[i].dateTime >= to) {
-      startIndex = i -1;
+      startIndex = i - 1;
       break;
     }
   }
@@ -153,11 +163,10 @@ void WrappedSystem::getEconomicNewsTime(const string countryCode, datetime from,
           MqlCalendarCountry country;
           if (!CalendarCountryById(calendarEvent.country_id, country))
             continue;
-          if (calendarEvent.importance != CALENDAR_IMPORTANCE_HIGH)
-            continue;
           EconomicEvent event;
           event.dateTime = eventData[i].time;
           event.name = calendarEvent.name;
+          event.importance = calendarEvent.importance;
           ArrayResize(result, ArraySize(result) + 1);
           result[ArraySize(result) - 1] = event;
         }

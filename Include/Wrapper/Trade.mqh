@@ -22,6 +22,7 @@ public:
     magicNumber = _magicNumber;
     trade = CTrade();
     trade.SetExpertMagicNumber(magicNumber);
+    // trade.SetAsyncMode(true);
     lotSizeManager = _lotSizeManager;
     exitLevelManager = _exitLevelManager;
     digits = (int)SymbolInfoInteger(symbol, SYMBOL_DIGITS);
@@ -39,10 +40,13 @@ public:
                         digits),
         ORDER_TIME_GTC, 0, "");
 
-    if (ret) { // OrderSend の返り値 && エラーを確認する
+    if (ret) {
       int error = GetLastError();
-      printf("OrderSend Error : %d", error);
-      printf("current bid: %f", SymbolInfoDouble(Symbol(), SYMBOL_BID));
+      if (error != 0) {
+        printf("OrderSend Error : %d", error);
+        printf("current bid: %f", SymbolInfoDouble(Symbol(), SYMBOL_BID));
+        printf("current ask: %f", SymbolInfoDouble(Symbol(), SYMBOL_ASK));
+      }
     }
     return ret;
   }
@@ -58,12 +62,23 @@ public:
                         digits),
         ORDER_TIME_GTC, 0, "");
 
-    if (ret) { // OrderSend の返り値 && エラーを確認する
+    if (ret) {
       int error = GetLastError();
-      printf("OrderSend Error : %d", error);
-      printf("current bid: %f", SymbolInfoDouble(Symbol(), SYMBOL_BID));
+      if (error != 0) {
+        printf("OrderSend Error : %d", error);
+        printf("current bid: %f", SymbolInfoDouble(Symbol(), SYMBOL_BID));
+        printf("current ask: %f", SymbolInfoDouble(Symbol(), SYMBOL_ASK));
+      }
     }
     return ret;
+  }
+
+  bool stopActiveBaseLong(double range) {
+    double ask = SymbolInfoDouble(symbol, SYMBOL_ASK);
+    double point = SymbolInfoDouble(symbol, SYMBOL_POINT) * 10;
+    double price = ask + range * point;
+
+    return stopLong(price);
   }
 
   bool limitShort(double price) {
@@ -105,17 +120,24 @@ public:
     return ret;
   }
 
-  bool activeLong() {
+  bool stopActiveBaseShort(double range) {
     double bid = SymbolInfoDouble(Symbol(), SYMBOL_BID);
+    double point = SymbolInfoDouble(Symbol(), SYMBOL_POINT) * 10;
+    double price = bid - range * point;
+    return stopShort(price);
+  }
+
+  bool activeLong() {
+    double ask = SymbolInfoDouble(Symbol(), SYMBOL_ASK);
     return activeLong(lotSizeManager.get(),
-                      exitLevelManager.getSl(bid, POSITION_TYPE_BUY),
-                      exitLevelManager.getTp(bid, POSITION_TYPE_BUY));
+                      exitLevelManager.getSl(ask, POSITION_TYPE_BUY),
+                      exitLevelManager.getTp(ask, POSITION_TYPE_BUY));
   }
 
   bool activeLong(const double lot) {
-    double bid = SymbolInfoDouble(Symbol(), SYMBOL_BID);
-    return activeLong(lot, exitLevelManager.getSl(bid, POSITION_TYPE_BUY),
-                      exitLevelManager.getTp(bid, POSITION_TYPE_BUY));
+    double ask = SymbolInfoDouble(Symbol(), SYMBOL_ASK);
+    return activeLong(lot, exitLevelManager.getSl(ask, POSITION_TYPE_BUY),
+                      exitLevelManager.getTp(ask, POSITION_TYPE_BUY));
   }
 
   bool activeLong(const double lot, const double sl, const double tp) {
@@ -123,16 +145,16 @@ public:
   }
 
   bool activeShort() {
-    double ask = SymbolInfoDouble(Symbol(), SYMBOL_ASK);
+    double bid = SymbolInfoDouble(Symbol(), SYMBOL_BID);
     return activeShort(lotSizeManager.get(),
-                       exitLevelManager.getSl(ask, POSITION_TYPE_SELL),
-                       exitLevelManager.getTp(ask, POSITION_TYPE_SELL));
+                       exitLevelManager.getSl(bid, POSITION_TYPE_SELL),
+                       exitLevelManager.getTp(bid, POSITION_TYPE_SELL));
   }
 
   bool activeShort(const double lot) {
-    double ask = SymbolInfoDouble(Symbol(), SYMBOL_ASK);
-    return activeShort(lot, exitLevelManager.getSl(ask, POSITION_TYPE_SELL),
-                       exitLevelManager.getTp(ask, POSITION_TYPE_SELL));
+    double bid = SymbolInfoDouble(Symbol(), SYMBOL_BID);
+    return activeShort(lot, exitLevelManager.getSl(bid, POSITION_TYPE_SELL),
+                       exitLevelManager.getTp(bid, POSITION_TYPE_SELL));
   }
 
   bool activeShort(const double lot, const double sl, const double tp) {
@@ -223,6 +245,8 @@ public:
         // 指値注文または逆指値注文かつ Magic Number が一致
         if ((type == ORDER_TYPE_BUY_STOP || type == ORDER_TYPE_SELL_STOP) &&
             magic == magicNumber) {
+          Print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+          Print(ticket, "DELETE!!!!!!!!!!!!!!!!!!!!!!!!");
           trade.OrderDelete(ticket);
         }
       }
@@ -459,33 +483,67 @@ public:
     ulong deal_ticket = trans.deal;
     if (HistoryDealSelect(deal_ticket)) {
       ulong dealMagic = HistoryDealGetInteger(deal_ticket, DEAL_MAGIC);
-      if (dealMagic != magicNumber) {
-        return TRADE_RESULT_ELSE;
-      }
       double deal_profit = HistoryDealGetDouble(deal_ticket, DEAL_PROFIT);
       ulong deal_reason = HistoryDealGetInteger(deal_ticket, DEAL_REASON);
+      if (dealMagic == magicNumber) {
 
-      // ストップロスで決済された場合
-      if (deal_profit < 0 && deal_reason == DEAL_REASON_SL) {
-        return TRADE_RESULT_LOSE;
-      }
-      if (deal_profit > 0 && deal_reason == DEAL_REASON_TP) {
-        return TRADE_RESULT_WIN;
+        // ストップロスで決済された場合
+        if (deal_profit < 0 && deal_reason == DEAL_REASON_SL) {
+          return TRADE_RESULT_LOSE;
+        }
+        if (deal_profit > 0 && deal_reason == DEAL_REASON_TP) {
+          return TRADE_RESULT_WIN;
+        }
       }
 
-      // 取引が成功したか確認
-      ulong order_ticket = HistoryDealGetInteger(
-          deal_ticket, DEAL_ORDER); // 対応するオーダーのチケット
-      ulong position_id =
-          HistoryDealGetInteger(deal_ticket, DEAL_POSITION_ID); // ポジションID
-      double profit = HistoryDealGetDouble(deal_ticket, DEAL_PROFIT); // 損益
-      if (profit > 0) {
-        return TRADE_RESULT_WIN;
-      }
-      if (profit < 0) {
-        return TRADE_RESULT_LOSE;
+      if (HistoryDealGetInteger(deal_ticket, DEAL_ENTRY) == DEAL_ENTRY_OUT) {
+        ulong ticket = HistoryDealGetInteger(deal_ticket, DEAL_POSITION_ID);
+        if (PositionSelectByTicket(ticket)) {
+          long positionMagic = PositionGetInteger(POSITION_MAGIC);
+          if (positionMagic == magicNumber) {
+            // このポジションはこのEAによって開かれ、手動で決済された
+            // ここに処理を記述
+            if (deal_profit > 0) {
+              return TRADE_RESULT_WIN;
+            }
+            if (deal_profit < 0) {
+              return TRADE_RESULT_LOSE;
+            }
+          }
+        }
       }
     };
     return TRADE_RESULT_ELSE;
   };
+
+  bool isBreakEven(double plusPips = 0.0) {
+    double point = SymbolInfoDouble(_Symbol, SYMBOL_POINT);
+    double targetProfit = plusPips * point * 10;
+
+    double profit = 0;
+    // 保有している全てのポジションを確認
+    for (int i = PositionsTotal() - 1; i >= 0; i--) {
+      // ポジションを選択
+      if (positionSelectByIndex(i)) {
+        if (PositionGetInteger(POSITION_MAGIC) != magicNumber)
+          continue;
+        // ポジションの利益を取得
+        profit += PositionGetDouble(POSITION_PROFIT);
+      }
+    }
+    return profit >= targetProfit;
+  }
+
+  bool isFilledOrder(const MqlTradeTransaction &trans) {
+    if (trans.type != TRADE_TRANSACTION_DEAL_ADD)
+      return false;
+    if (!HistoryDealSelect(trans.deal))
+      return false;
+
+    ulong dealMagic = HistoryDealGetInteger(trans.deal, DEAL_MAGIC);
+
+    return dealMagic == magicNumber &&
+           (trans.order_type == ORDER_TYPE_BUY_STOP ||
+            trans.order_type == ORDER_TYPE_SELL_STOP);
+  }
 };
