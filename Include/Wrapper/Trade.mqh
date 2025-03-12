@@ -22,6 +22,7 @@ public:
     magicNumber = _magicNumber;
     trade = CTrade();
     trade.SetExpertMagicNumber(magicNumber);
+    trade.LogLevel(LOG_LEVEL_ERRORS);
     // trade.SetAsyncMode(true);
     lotSizeManager = _lotSizeManager;
     exitLevelManager = _exitLevelManager;
@@ -209,6 +210,42 @@ public:
         // 指値注文または逆指値注文かつ Magic Number が一致
         if ((type == ORDER_TYPE_BUY_LIMIT || type == ORDER_TYPE_SELL_LIMIT ||
              type == ORDER_TYPE_BUY_STOP || type == ORDER_TYPE_SELL_STOP) &&
+            magic == magicNumber) {
+          return true;
+        }
+      }
+    }
+    return false; // 指値注文なし
+  }
+
+  bool hasPendingLongLimitOrder() {
+    int totalOrders = OrdersTotal(); // 保留中の注文数を取得
+
+    for (int i = 0; i < totalOrders; i++) {
+      ulong ticket = OrderGetTicket(i); // 注文のチケット番号を取得
+      if (OrderSelect(ticket)) {
+        ENUM_ORDER_TYPE type = (ENUM_ORDER_TYPE)OrderGetInteger(ORDER_TYPE);
+        ulong magic = OrderGetInteger(ORDER_MAGIC);
+        // 指値注文または逆指値注文かつ Magic Number が一致
+        if ((type == ORDER_TYPE_BUY_LIMIT || type == ORDER_TYPE_BUY_STOP) &&
+            magic == magicNumber) {
+          return true;
+        }
+      }
+    }
+    return false; // 指値注文なし
+  }
+
+  bool hasPendingShortLimitOrder() {
+    int totalOrders = OrdersTotal(); // 保留中の注文数を取得
+
+    for (int i = 0; i < totalOrders; i++) {
+      ulong ticket = OrderGetTicket(i); // 注文のチケット番号を取得
+      if (OrderSelect(ticket)) {
+        ENUM_ORDER_TYPE type = (ENUM_ORDER_TYPE)OrderGetInteger(ORDER_TYPE);
+        ulong magic = OrderGetInteger(ORDER_MAGIC);
+        // 指値注文または逆指値注文かつ Magic Number が一致
+        if ((type == ORDER_TYPE_SELL_LIMIT || type == ORDER_TYPE_SELL_STOP) &&
             magic == magicNumber) {
           return true;
         }
