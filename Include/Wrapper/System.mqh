@@ -95,10 +95,9 @@ void WrappedSystem::getEconomicNewsTimeForTester(const string countryCode,
       PrintFormat("fail open failed: %d", GetLastError());
       return;
     }
-
     datetime current = TimeTradeServer();
     //--- ファイルの終端まで読み込む
-    while (!FileIsEnding(file_handle)) {
+    while (!cfile.IsEnding()) {
       //--- 1行読み込み
       datetime date_time = FileReadDatetime(file_handle);
       string country = FileReadString(file_handle);
@@ -133,7 +132,7 @@ void WrappedSystem::getEconomicNewsTimeForTester(const string countryCode,
       result[ArraySize(result) - 1] = allEvent[i];
     }
     if (allEvent[i].dateTime >= to) {
-      startIndex = i - 1;
+      startIndex = i == 0 ? 0 : i - 1;
       break;
     }
   }

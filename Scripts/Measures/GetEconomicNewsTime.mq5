@@ -6,18 +6,20 @@ void OnStart() {
     // 書き出すCSVファイルのパス
     string file_name = "EconomicData.csv";
     int file_handle = FileOpen(file_name, FILE_WRITE | FILE_CSV);
+    int file_handle2 = FileOpen(file_name, FILE_WRITE | FILE_CSV | FILE_COMMON);
     // int file_handle = FileOpen(file_name, FILE_WRITE | FILE_CSV | FILE_COMMON);
 
-    if (file_handle == INVALID_HANDLE) {
+    if (file_handle == INVALID_HANDLE || file_handle2 == INVALID_HANDLE) {
       Print("Open a file failed: ", file_name);
       return;
     }
 
     // CSVファイルにヘッダーを書き込む
-    FileWrite(file_handle, "日時", "国", "通貨", "イベント", "重要度");
+    FileWrite(file_handle, "datetime", "country", "currency", "name", "importance");
+    FileWrite(file_handle2, "datetime", "country", "currency", "name", "importance");
 
     // 取得する期間を設定（例：過去1年間）
-    datetime end_time = TimeCurrent();
+    datetime end_time = TimeTradeServer();
     datetime start_time = end_time - PeriodSeconds(PERIOD_D1) * 365;
     string currency = "US";
     MqlCalendarValue eventData[];
@@ -37,6 +39,10 @@ void OnStart() {
                       TimeToString(eventData[i].time, TIME_DATE | TIME_MINUTES),
                       country.code, country.currency, event.name,
                       EnumToString(event.importance));
+            FileWrite(file_handle2,
+                      TimeToString(eventData[i].time, TIME_DATE | TIME_MINUTES),
+                      country.code, country.currency, event.name,
+                      EnumToString(event.importance));
           }
         }
       }
@@ -46,6 +52,7 @@ void OnStart() {
 
     // ファイルを閉じる
     FileClose(file_handle);
+    FileClose(file_handle2);
     Print("Script Successful", file_name);
 
         /*
