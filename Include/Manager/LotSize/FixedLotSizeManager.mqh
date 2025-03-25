@@ -1,12 +1,35 @@
+//+------------------------------------------------------------------+
+//|                                         FixedLotSizeManager.mqh |
+//|                                       Copyright 2025, Your Name |
+//|                                             https://www.mql5.com |
+//+------------------------------------------------------------------+
+#property copyright "Copyright 2025, Your Name"
+#property link      "https://www.mql5.com"
+#property version   "1.00"
+
 #include "LotSizeManagerInterface.mqh"
 
-class FixedLotSizeManager : public LotSizeManager {
+//+------------------------------------------------------------------+
+//| 固定ロットサイズ管理クラス                                       |
+//+------------------------------------------------------------------+
+class CFixedLotSizeManager
+{
 private:
-  double lot;
-
+   double            m_lotSize;           // 固定ロットサイズ
+   
 public:
-  FixedLotSizeManager(double _lot) { lot = _lot; };
-  void wonThen() override {};
-  void loseThen() override {};
-  double get() override { return lot; };
+                     CFixedLotSizeManager();
+                    ~CFixedLotSizeManager() {};
+   
+   // ロットサイズの設定・取得
+   void              SetLot(double lotSize) { m_lotSize = lotSize; }
+   double            CalculateLotSize() { return m_lotSize; }
+};
+
+//+------------------------------------------------------------------+
+//| コンストラクタ                                                  |
+//+------------------------------------------------------------------+
+CFixedLotSizeManager::CFixedLotSizeManager()
+{
+   m_lotSize = 0.1;  // デフォルトロットサイズ
 }
